@@ -1,0 +1,13 @@
+
+# virtual env
+.project
+
+
+# env
+.env.local
+
+
+# IDE
+ .vscode/
+
+
