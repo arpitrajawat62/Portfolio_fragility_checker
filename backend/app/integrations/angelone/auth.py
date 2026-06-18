@@ -10,9 +10,6 @@ async def login_to_angelone(client_code: str, password: str, totp: str) -> dict:
 
     response = client.generateSession(client_code, password, totp)
 
-    # print(f"=== Angel One Response ===")
-    # print(response)
-    # print(f"==========================")
 
     if not response:
         raise Exception("Angel One returned empty response")
