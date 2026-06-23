@@ -1,0 +1,19 @@
+
+# virtual env
+.project/
+
+# Python
+__pycache__/
+
+# Environment variable
+backend/.env
+
+
+# Logs
+backend/logs/
+
+# Node
+frontend/node_modules/
+
+# IDE
+.vscode/
