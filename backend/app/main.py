@@ -1,14 +1,18 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+
 from app.database.base import Base
 from app.database.session import engine
+from app.cache.redis_client import init_redis, close_redis
 
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.portfolio import router as portfolio_router
 from app.api.routes.fragility import router as fragility_router
 from app.api.routes.health import router as health_router
-from fastapi.middleware.cors import CORSMiddleware
+
 
 
 
@@ -16,7 +20,15 @@ from fastapi.middleware.cors import CORSMiddleware
 async def lifespan(app: FastAPI):    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    
+    try:
+        await init_redis()
+    except Exception as e:
+        print(f"Redis conncetion failed: {e} - caching disabled")
+
     yield
+
+    await close_redis()
 
 
 app = FastAPI(
