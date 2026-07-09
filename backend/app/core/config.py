@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-
+   
     # App
     APP_NAME: str = "Portfolio Fragility Analyzer"
     DEBUG: bool = True
@@ -12,9 +12,10 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_MARKET_DATA_TTL: int = 300
 
     # Angel One
-    ANGEL_API_KEY: str 
+    ANGEL_API_KEY: str = ""
     ANGELONE_BASE_URL: str = "https://apiconnect.angelbroking.com"
     
 
