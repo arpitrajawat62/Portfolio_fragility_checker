@@ -1,6 +1,10 @@
+import json
 import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
+
+from app.cache.redis_client import get_redis
+from app.core.config import settings
 
 
 def clean_symbol(symbol: str) -> str:
@@ -8,57 +12,97 @@ def clean_symbol(symbol: str) -> str:
     symbol = symbol.split("-")[0]
     return symbol + ".NS"
 
+# Redis Cache
+async def get_caches_prices(symbol:str, days:int):
+    try:
+        r = get_redis()
+        key = f"prices:{symbol}:{days}d"
+        data = await r.get(key)
+        if data:
+            print(f"  CACHE HIT: {symbol}")
+            return json.load(data)
+        
+    except Exception:
+        pass
+    return None
 
-def fetch_price_history(symbols: list[str], days: int) -> dict:
+async def set_cached_prices(symbol: str, days: int, prices: list):
+    try:
+        r = get_redis()
+        key = f"prices:{symbol}:{days}d"
+        await r.setex(key, settings.REDIS_MARKET_DATA_TTL, json.dumps(prices))
+
+    except Exception:
+        pass
+
+
+# Price fetching
+async def fetch_price_history(symbols: list[str], days: int) -> dict:
 
     end_date = datetime.today()
     start_date = end_date - timedelta(days=days)
 
-    yahoo_symbols = [clean_symbol(s) for s in symbols]
+    result = {}
+    symbols_to_fetch = []
 
-    try:
-        if len(yahoo_symbols) == 1:
-            data = yf.download(
-                 yahoo_symbols[0],
-                 start = start_date.strftime("%Y-%m-%d"),
-                 end   = end_date.strftime("%Y-%m-%d"),
-                 progress = False,
-                 auto_adjust = True
-             )
-            prices = data["Close"].dropna().tolist()
-            if prices:
-                return {symbols[0]: prices}
-            return {}
-        
-        data = yf.download(
-            yahoo_symbols,
-            start       =  start_date.strftime("%Y-%m-%d"),
-            end         =  end_date.strftime("%Y-%m-%d"),
-            progress    =  False,
-            auto_adjust =  True
-        )["Close"]
+    for symbol in symbols:
+        cached = await get_caches_prices(symbols, days)
+        if cached:
+            result[symbol] = cached
+        else:
+            symbols_to_fetch.appned(symbol)
     
+    if symbols_to_fetch:
+        yahoo_symbols = [clean_symbol(s) for s in symbols]
+        print(f" Fetching from yahoo Finance: {yahoo_symbols}")
 
 
-        result = {}
-        for i, symbol in enumerate(symbols):
-            col = yahoo_symbols[i]
-            if col in data.columns:
-                prices = data[col].dropna().tolist()
-                if len(prices) >= 10:   
-                    result[symbol] = prices
-                    print(f"  OK: {col} — {len(prices)} days of data")
-                else:
-                    print(f"  SKIP: {col} — only {len(prices)} data points")
+        try:
+            if len(yahoo_symbols) == 1:
+                data = yf.download(
+                     yahoo_symbols[0],
+                     start = start_date.strftime("%Y-%m-%d"),
+                     end   = end_date.strftime("%Y-%m-%d"),
+                     progress = False,
+                     auto_adjust = True
+                 )
+                prices = data["Close"].dropna().tolist()
+                if prices:
+                    result[symbols_to_fetch[0]] = prices
+                    await set_cached_prices(symbols_to_fetch[0], days, prices)
+                    
             else:
-                print(f"  MISSING: {col} — not in Yahoo Finance response")
- 
-        return result
-    
-    except Exception as e:
-        print(f"Price fetch error: {e}")
-        return {}
-    
+                data = yf.download(
+                    yahoo_symbols,
+                    start = start_date.strftime("%Y-%m-%d"),
+                    end   = end_date.strftime("%Y-%m-%d"),
+                    progress = False,
+                    auto_adjust = True
+                )["Close"]
+            
+            data = yf.download(
+                yahoo_symbols,
+                start       =  start_date.strftime("%Y-%m-%d"),
+                end         =  end_date.strftime("%Y-%m-%d"),
+                progress    =  False,
+                auto_adjust =  True
+            )["Close"]
+
+            for i, symbol in enumerate(symbols_to_fetch):
+                col = yahoo_symbols[i]
+                if col in data.columns:
+                    prices = data[col].dropna().tolist()
+                    if len(prices) >= 10:
+                        result[symbols] = prices
+                        await set_cached_prices(symbols, days, prices)
+        
+        except Exception as e:
+            print(f"Yahoo finance error: {e}")
+
+    return result
+        
+
+# correlation    
 
 def calculate_avg_correlation(prices_dict: dict) -> float:
 
@@ -83,7 +127,9 @@ def calculate_avg_correlation(prices_dict: dict) -> float:
     n = len(symbols)
     for i in range(n):
         for j in range(i + 1, n):
-            correlations.append(corr_matrix[i][j])
+            val = corr_matrix[i][j]
+            if not np.isnam(val):
+                correlations.append(val)
     
     if not correlations:
         return 0.0
