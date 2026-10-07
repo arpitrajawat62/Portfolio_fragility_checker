@@ -243,7 +243,7 @@ fragility_reports     — computed risk metrics and score
 
 **1. Clone the repo**
 ```bash
-git clone https://github.com/yourusername/portfolio-fragility-checker
+git clone https://github.com/arpitrajawat62/Portfolio_fragility_checker.git
 cd portfolio-fragility-checker
 ```
 
