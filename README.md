@@ -188,7 +188,7 @@ project/
 │   │       └── angelone/       # SmartAPI client
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   └── .env                    # ← NOT committed to git
+│   └── .env                    
 │
 └── frontend/
     ├── src/
