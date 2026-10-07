@@ -163,6 +163,7 @@ Worst peak-to-trough drop in the last year.
 project/
 │
 ├── docker-compose.yml          # runs all 4 services
+├── requirements.txt
 ├── .gitignore
 │
 ├── backend/
@@ -186,8 +187,7 @@ project/
 │   │   │   └── scoring.py
 │   │   └── integrations/
 │   │       └── angelone/       # SmartAPI client
-│   ├── Dockerfile
-│   ├── requirements.txt
+│   ├── Dockerfile│
 │   └── .env                    
 │
 └── frontend/
